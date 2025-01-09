@@ -1,0 +1,9 @@
+/* styles.css */
+#root {
+    height: 100%;
+  }
+  
+  .leaflet-container {
+    height: 100vh; /* Mapa ocupa toda la altura de la ventana */
+  }
+  
