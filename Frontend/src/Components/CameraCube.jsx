@@ -1,0 +1,167 @@
+import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+
+const CameraCube = ({ onFaceClick, activeView }) => {
+    const cubeContainerRef = useRef();
+    const cubeRef = useRef();
+    const arrowsRef = useRef([]);
+    const targetRotationRef = useRef(new THREE.Euler());
+    const materials = useRef([]);
+
+    const createTextMaterial = (label, color) => {
+        const size = 128;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, size, size);
+
+        ctx.font = 'bold 24px Arial';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label.toUpperCase(), size / 2, size / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.MeshBasicMaterial({ map: texture, name: label });
+        material.transparent = true;
+        material.opacity = 0.6;
+        return material;
+    };
+
+    useEffect(() => {
+        const cubeScene = new THREE.Scene();
+        const cubeCamera = new THREE.PerspectiveCamera(50, 1, 1, 1000);
+        cubeCamera.position.set(5, 5, 5);
+        cubeCamera.lookAt(0, 0, 0);
+
+        const cubeRenderer = new THREE.WebGLRenderer({ alpha: true });
+        cubeRenderer.setSize(300, 300);
+        cubeRenderer.domElement.style.width = '100%';
+        cubeRenderer.domElement.style.height = '100%';
+        cubeRenderer.domElement.style.cursor = 'pointer';
+        cubeRenderer.domElement.style.position = 'absolute';
+        cubeRenderer.domElement.style.right = '20px';
+        cubeRenderer.domElement.style.top = '20px';
+
+        cubeContainerRef.current.appendChild(cubeRenderer.domElement);
+
+        materials.current = [
+            createTextMaterial('right', '#c0392b'),
+            createTextMaterial('left', '#27ae60'),
+            createTextMaterial('top', '#2980b9'),
+            createTextMaterial('bottom', '#f1c40f'),
+            createTextMaterial('front', '#16a085'),
+            createTextMaterial('back', '#8e44ad')
+        ];
+
+        const cube = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), materials.current);
+        cubeRef.current = cube;
+        cubeScene.add(cube);
+
+        const addArrows = () => {
+            const directions = [
+                { dir: new THREE.Vector3(1, 0, 0), color: 0xff0000 }, // X
+                { dir: new THREE.Vector3(0, 1, 0), color: 0x00ff00 }, // Y
+                { dir: new THREE.Vector3(0, 0, 1), color: 0x0000ff }  // Z
+            ];
+            directions.forEach(({ dir, color }) => {
+                const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0, 0, 0), 2.5, color);
+                arrowsRef.current.push(arrow);
+                cubeScene.add(arrow);
+            });
+        };
+        addArrows();
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        const rotationMap = {
+            top: new THREE.Euler(-Math.PI / 2, 0, 0),
+            bottom: new THREE.Euler(Math.PI / 2, 0, 0),
+            front: new THREE.Euler(0, 0, 0),
+            back: new THREE.Euler(0, Math.PI, 0),
+            left: new THREE.Euler(0, Math.PI / 2, 0),
+            right: new THREE.Euler(0, -Math.PI / 2, 0)
+        };
+
+        const highlightActiveFace = (faceName) => {
+            materials.current.forEach(material => {
+                material.opacity = 0.6;
+                material.transparent = true;
+            });
+            const activeMaterial = materials.current.find(m => m.name === faceName);
+            if (activeMaterial) {
+                activeMaterial.opacity = 1;
+                activeMaterial.transparent = false;
+            }
+        };
+
+        cubeRenderer.domElement.addEventListener('click', (event) => {
+            const bounds = cubeRenderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+            mouse.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, cubeCamera);
+            const intersects = raycaster.intersectObject(cube, true);
+            if (intersects.length > 0) {
+                const faceIndex = intersects[0].face.materialIndex;
+                const face = materials.current[faceIndex];
+                if (rotationMap[face.name]) {
+                    targetRotationRef.current.copy(rotationMap[face.name]);
+                    highlightActiveFace(face.name);
+                    onFaceClick(face.name);
+                }
+            }
+        });
+
+        const animateCube = () => {
+            requestAnimationFrame(animateCube);
+            const target = targetRotationRef.current;
+            const cube = cubeRef.current;
+            cube.rotation.x += (target.x - cube.rotation.x) * 0.1;
+            cube.rotation.y += (target.y - cube.rotation.y) * 0.1;
+            cube.rotation.z += (target.z - cube.rotation.z) * 0.1;
+            cubeRenderer.render(cubeScene, cubeCamera);
+        };
+
+        animateCube();
+
+        return () => {
+            if (cubeContainerRef.current) {
+                while (cubeContainerRef.current.firstChild) {
+                    cubeContainerRef.current.removeChild(cubeContainerRef.current.firstChild);
+                }
+            }
+        };
+    }, [onFaceClick]);
+
+    useEffect(() => {
+        const rotationMap = {
+            top: new THREE.Euler(-Math.PI / 2, 0, 0),
+            bottom: new THREE.Euler(Math.PI / 2, 0, 0),
+            front: new THREE.Euler(0, 0, 0),
+            back: new THREE.Euler(0, Math.PI, 0),
+            left: new THREE.Euler(0, Math.PI / 2, 0),
+            right: new THREE.Euler(0, -Math.PI / 2, 0)
+        };
+
+        if (activeView && rotationMap[activeView]) {
+            targetRotationRef.current.copy(rotationMap[activeView]);
+            const material = materials.current.find(m => m.name === activeView);
+            if (material) {
+                materials.current.forEach(m => {
+                    m.opacity = 0.6;
+                    m.transparent = true;
+                });
+                material.opacity = 1;
+                material.transparent = false;
+            }
+        }
+    }, [activeView]);
+
+    return <div ref={cubeContainerRef} />;
+};
+
+export default CameraCube;
