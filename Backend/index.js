@@ -212,7 +212,7 @@ app.post('/historial', (req, res) => {
     );
 });
 
-app.get('/ver-historial', (req, res) => {
+app.get('/api/historial', (req, res) => {
     db.query(
         `SELECT h.id, h.carro_id, p.nombre AS punto_nombre, h.timestamp
          FROM HistorialRecorrido h
@@ -221,43 +221,31 @@ app.get('/ver-historial', (req, res) => {
         (err, results) => {
             if (err) {
                 console.error('Error al consultar historial:', err);
-                return res.status(500).send('Error al consultar historial');
+                return res.status(500).json({ error: 'Error al consultar historial' });
             }
+            res.json(results); // <<--- importante: responde en formato JSON
+        }
+    );
+});
+// Guardar múltiples puntos del recorrido cuando llega al WiFi
+app.post('/historial/lote', (req, res) => {
+    const { carro_id, puntos } = req.body;
+  console.log('📥 Recibido historial/lote:', carro_id, puntos); // <--- Agrega esto
+    if (!Array.isArray(puntos) || puntos.length === 0 || !carro_id) {
+        return res.status(400).json({ error: 'Datos incompletos o lista vacía' });
+    }
 
-            let html = `
-                <html>
-                    <head>
-                        <title>Historial de Recorrido</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
-                            table { width: 100%; border-collapse: collapse; background: white; }
-                            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-                            th { background: #333; color: white; }
-                        </style>
-                    </head>
-                    <body>
-                        <h2>Historial de Recorrido</h2>
-                        <table>
-                            <tr>
-                                <th>ID</th>
-                                <th>Carro ID</th>
-                                <th>Punto</th>
-                                <th>Fecha y Hora</th>
-                            </tr>
-                            ${results.map(r => `
-                                <tr>
-                                    <td>${r.id}</td>
-                                    <td>${r.carro_id}</td>
-                                    <td>${r.punto_nombre || '-'}</td>
-                                    <td>${new Date(r.timestamp).toLocaleString()}</td>
-                                </tr>
-                            `).join('')}
-                        </table>
-                    </body>
-                </html>
-            `;
+    const values = puntos.map(punto_id => [carro_id, punto_id]);
 
-            res.send(html);
+    db.query(
+        'INSERT INTO HistorialRecorrido (carro_id, punto_id) VALUES ?',
+        [values],
+        (err, results) => {
+            if (err) {
+                console.error('Error al insertar lote de historial:', err);
+                return res.status(500).json({ error: 'Error en la base de datos' });
+            }
+            res.json({ success: true, insertados: results.affectedRows });
         }
     );
 });

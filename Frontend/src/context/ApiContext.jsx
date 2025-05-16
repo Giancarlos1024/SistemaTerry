@@ -7,6 +7,30 @@ export const useApi = () => useContext(ApiContext);
 export const ApiProvider = ({ children }) => {
     const API_BASE = 'http://localhost:5000';
 
+    // const fetchCarros = async () => {
+    //     const response = await fetch('http://localhost:5000/carros');
+    //     const carros = await response.json();
+
+    //     carrosRef.current = carros.map(carro => {
+    //         const mesh = new THREE.Mesh(
+    //             new THREE.BoxGeometry(400, 200, 200),
+    //             new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff })
+    //         );
+    //         mesh.position.set(0, 100, 0);
+    //         sceneRef.current.add(mesh);
+
+    //         return {
+    //             id: carro.id,
+    //             mactag: carro.mactag,
+    //             mesh,
+    //             ruta: rutaAnimada.current, // temporalmente la misma para todos
+    //             index: 0,
+    //             recorrido: []
+    //         };
+    //     });
+    // };
+
+
     const getPuntos = async () => {
         const res = await fetch(`${API_BASE}/puntos`);
         return await res.json();
@@ -57,6 +81,16 @@ export const ApiProvider = ({ children }) => {
         });
         return await res.json();
     };
+    
+    const getHistorial = async () => {
+        const res = await fetch(`${API_BASE}/api/historial`);
+        return await res.json();
+    };
+
+    const getCarros = async () => {
+        const res = await fetch(`${API_BASE}/carros`);
+        return await res.json();
+    };
 
     return (
         <ApiContext.Provider value={{
@@ -66,7 +100,10 @@ export const ApiProvider = ({ children }) => {
             postPunto,
             postRuta,
             postRutaPersonalizada,
-            updateRutaPersonalizada
+            updateRutaPersonalizada,
+            getHistorial,
+            getCarros, 
+           
         }}>
             {children}
         </ApiContext.Provider>

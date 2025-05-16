@@ -7,6 +7,8 @@ const CameraCube = ({ onFaceClick, activeView }) => {
     const arrowsRef = useRef([]);
     const targetRotationRef = useRef(new THREE.Euler());
     const materials = useRef([]);
+    const rendererRef = useRef();
+    const animationFrameRef = useRef();
 
     const createTextMaterial = (label, color) => {
         const size = 128;
@@ -38,46 +40,42 @@ const CameraCube = ({ onFaceClick, activeView }) => {
         cubeCamera.lookAt(0, 0, 0);
 
         const cubeRenderer = new THREE.WebGLRenderer({ alpha: true });
-        cubeRenderer.setSize(300, 300);
-        cubeRenderer.domElement.style.width = '100%';
-        cubeRenderer.domElement.style.height = '100%';
-        cubeRenderer.domElement.style.cursor = 'pointer';
-        cubeRenderer.domElement.style.position = 'absolute';
-        cubeRenderer.domElement.style.right = '20px';
-        cubeRenderer.domElement.style.top = '20px';
+        cubeRenderer.setSize(240, 240);
+        cubeRenderer.domElement.classList.add(
+            'w-full', 'h-full', 'rounded-xl',
+            'shadow-lg', 'border', 'border-gray-700',
+            'backdrop-blur-md', 'cursor-pointer'
+        );
+        rendererRef.current = cubeRenderer;
 
         cubeContainerRef.current.appendChild(cubeRenderer.domElement);
 
         materials.current = [
-            createTextMaterial('right', '#c0392b'),
-            createTextMaterial('left', '#27ae60'),
-            createTextMaterial('top', '#2980b9'),
+            createTextMaterial('right', '#e74c3c'),
+            createTextMaterial('left', '#2ecc71'),
+            createTextMaterial('top', '#3498db'),
             createTextMaterial('bottom', '#f1c40f'),
-            createTextMaterial('front', '#16a085'),
-            createTextMaterial('back', '#8e44ad')
+            createTextMaterial('front', '#1abc9c'),
+            createTextMaterial('back', '#9b59b6'),
         ];
 
         const cube = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), materials.current);
         cubeRef.current = cube;
         cubeScene.add(cube);
 
-        const addArrows = () => {
-            const directions = [
-                { dir: new THREE.Vector3(1, 0, 0), color: 0xff0000 }, // X
-                { dir: new THREE.Vector3(0, 1, 0), color: 0x00ff00 }, // Y
-                { dir: new THREE.Vector3(0, 0, 1), color: 0x0000ff }  // Z
-            ];
-            directions.forEach(({ dir, color }) => {
-                const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0, 0, 0), 2.5, color);
-                arrowsRef.current.push(arrow);
-                cubeScene.add(arrow);
-            });
-        };
-        addArrows();
+        const directions = [
+            { dir: new THREE.Vector3(1, 0, 0), color: 0xff0000 },
+            { dir: new THREE.Vector3(0, 1, 0), color: 0x00ff00 },
+            { dir: new THREE.Vector3(0, 0, 1), color: 0x0000ff },
+        ];
+        directions.forEach(({ dir, color }) => {
+            const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0, 0, 0), 2.5, color);
+            arrowsRef.current.push(arrow);
+            cubeScene.add(arrow);
+        });
 
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-
         const rotationMap = {
             top: new THREE.Euler(-Math.PI / 2, 0, 0),
             bottom: new THREE.Euler(Math.PI / 2, 0, 0),
@@ -99,7 +97,7 @@ const CameraCube = ({ onFaceClick, activeView }) => {
             }
         };
 
-        cubeRenderer.domElement.addEventListener('click', (event) => {
+        const handleClick = (event) => {
             const bounds = cubeRenderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
             mouse.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
@@ -114,12 +112,13 @@ const CameraCube = ({ onFaceClick, activeView }) => {
                     onFaceClick(face.name);
                 }
             }
-        });
+        };
+
+        cubeRenderer.domElement.addEventListener('click', handleClick);
 
         const animateCube = () => {
-            requestAnimationFrame(animateCube);
+            animationFrameRef.current = requestAnimationFrame(animateCube);
             const target = targetRotationRef.current;
-            const cube = cubeRef.current;
             cube.rotation.x += (target.x - cube.rotation.x) * 0.1;
             cube.rotation.y += (target.y - cube.rotation.y) * 0.1;
             cube.rotation.z += (target.z - cube.rotation.z) * 0.1;
@@ -129,6 +128,12 @@ const CameraCube = ({ onFaceClick, activeView }) => {
         animateCube();
 
         return () => {
+            cubeRenderer.domElement.removeEventListener('click', handleClick);
+            cancelAnimationFrame(animationFrameRef.current);
+            cubeRenderer.dispose();
+            cubeRenderer.forceContextLoss?.();
+            cubeRenderer.domElement?.remove();
+
             if (cubeContainerRef.current) {
                 while (cubeContainerRef.current.firstChild) {
                     cubeContainerRef.current.removeChild(cubeContainerRef.current.firstChild);
@@ -161,7 +166,12 @@ const CameraCube = ({ onFaceClick, activeView }) => {
         }
     }, [activeView]);
 
-    return <div ref={cubeContainerRef} />;
+    return (
+        <div
+            ref={cubeContainerRef}
+            className="w-[240px] h-[240px] rounded-2xl p-1 bg-white/10 border border-gray-700 shadow-xl backdrop-blur-sm"
+        />
+    );
 };
 
 export default CameraCube;

@@ -17,13 +17,17 @@
     "@pixi/sprite": "^7.4.3",
     "@pixi/sprite-animated": "^7.4.3",
     "@pixi/text": "^7.4.3",
+    "@tailwindcss/vite": "^4.1.6",
     "gsap": "^3.13.0",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.511.0",
     "pixi.js": "^8.9.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-leaflet": "^5.0.0",
+    "react-router-dom": "^7.6.0",
     "socket.io-client": "^4.8.1",
+    "tailwindcss": "^4.1.6",
     "three": "^0.176.0"
   },
   "devDependencies": {
