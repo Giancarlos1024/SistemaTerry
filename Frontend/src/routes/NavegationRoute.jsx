@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 
 import { NotFound } from "../View/NotFound"
 import { Dashboard } from "../View/Dashboard"
@@ -13,7 +13,7 @@ export const NavegationRoute = () =>{
         <BrowserRouter>
             <ThemeProvider>
                  <Routes>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
                
                 
                 <Route path="/dashboard" element={<Dashboard />}>
