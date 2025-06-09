@@ -40,12 +40,7 @@ const CameraCube = ({ onFaceClick, activeView }) => {
         cubeCamera.lookAt(0, 0, 0);
 
         const cubeRenderer = new THREE.WebGLRenderer({ alpha: true });
-        cubeRenderer.setSize(240, 240);
-        cubeRenderer.domElement.classList.add(
-            'w-full', 'h-full', 'rounded-xl',
-            'shadow-lg', 'border', 'border-gray-700',
-            'backdrop-blur-md', 'cursor-pointer'
-        );
+        cubeRenderer.setSize(150, 150);
         rendererRef.current = cubeRenderer;
 
         cubeContainerRef.current.appendChild(cubeRenderer.domElement);
@@ -169,7 +164,7 @@ const CameraCube = ({ onFaceClick, activeView }) => {
     return (
         <div
             ref={cubeContainerRef}
-            className="w-[240px] h-[240px] rounded-2xl p-1 bg-white/10 border border-gray-700 shadow-xl backdrop-blur-sm"
+            className="w-[240px] h-[240px] "
         />
     );
 };

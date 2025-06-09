@@ -214,7 +214,7 @@ app.post('/historial', (req, res) => {
 
 app.get('/api/historial', (req, res) => {
     db.query(
-        `SELECT h.id, h.carro_id, p.nombre AS punto_nombre, h.timestamp
+        `SELECT h.id, h.carro_id, h.punto_id, p.nombre AS punto_nombre, h.timestamp
          FROM HistorialRecorrido h
          LEFT JOIN Puntos p ON h.punto_id = p.id
          ORDER BY h.timestamp DESC`,
@@ -223,10 +223,11 @@ app.get('/api/historial', (req, res) => {
                 console.error('Error al consultar historial:', err);
                 return res.status(500).json({ error: 'Error al consultar historial' });
             }
-            res.json(results); // <<--- importante: responde en formato JSON
+            res.json(results);
         }
     );
 });
+
 // Guardar múltiples puntos del recorrido cuando llega al WiFi
 app.post('/historial/lote', (req, res) => {
     const { carro_id, puntos } = req.body;
@@ -249,6 +250,32 @@ app.post('/historial/lote', (req, res) => {
         }
     );
 });
+
+app.get('/api/historial-vehiculos', (req, res) => {
+    db.query(`
+        SELECT 
+            c.placa AS PLACA,
+            c.nombre AS NOMBRE,
+            c.empresa AS EMPRESA,
+            c.modelo AS MODELO,
+            c.area AS AREA,
+            c.gw AS GATEWAY,
+            p.nombre AS PUNTO_CONTROL,
+            h.timestamp AS FECHA
+        FROM HistorialRecorrido h
+        LEFT JOIN Carros c ON h.carro_id = c.mactag
+        LEFT JOIN Puntos p ON h.punto_id = p.id
+        ORDER BY h.timestamp DESC
+    `, (err, results) => {
+        if (err) {
+            console.error('❌ Error al obtener historial de vehículos:', err);
+            return res.status(500).json({ error: 'Error al consultar historial' });
+        }
+        res.json(results);
+    });
+});
+
+
 
 
 // Servidor corriendo

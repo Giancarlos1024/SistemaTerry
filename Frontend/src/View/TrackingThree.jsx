@@ -31,7 +31,7 @@ const TrackingThree = () => {
     const isPausedRef = useRef(true);
     const rendererRef = useRef(null);
     const carroControlado = useRef(null);
-    const { getPuntos, getRutas, getRutasPersonalizadas, getHistorial, getCarros } = useApi();
+    const { getPuntos, getRutas, getRutasPersonalizadas, getHistorial, getCarros,getHistorialVehiculos} = useApi();
     const [carroSeleccionado, setCarroSeleccionado] = useState("");
 
     const [fechaInicio, setFechaInicio] = useState("");
@@ -39,73 +39,6 @@ const TrackingThree = () => {
 
     const [carroClickeado, setCarroClickeado] = useState(null);
     const [mostrarModalCarro, setMostrarModalCarro] = useState(false);
-
-
-    const reproducirHistorial = (historialData = historial) => {
-        if (!puntos.length || !carroSeleccionado || !fechaInicio || !fechaFin) {
-            console.warn("⛔ Faltan datos para reproducir historial.");
-            return;
-        }
-
-        // Buscar el carro seleccionado y asignarlo como controlado
-        const carro = carrosRef.current.find(c => c.mactag === carroSeleccionado);
-        if (!carro) {
-            console.warn("❌ Carro no encontrado:", carroSeleccionado);
-            return;
-        }
-        carroControlado.current = carro;
-
-        // Filtrar historial por carro y rango de fechas
-        console.log("Historial antes de filtrar:", historialData);
-
-        const inicio = new Date(fechaInicio);
-        const fin = new Date(fechaFin);
-
-        const historialCarro = historialData
-            .filter(h => h.carro_id === carroSeleccionado)
-            .filter(h => {
-                const t = new Date(h.timestamp);
-                return t >= inicio && t <= fin;
-            })
-            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)); // más antiguo primero ✅
-
-console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punto_nombre));
-        const ruta = historialCarro
-            .map(h =>
-            puntos.find(
-                p => p.nombre.toLowerCase().trim() === h.punto_nombre.toLowerCase().trim()
-            )
-            )
-            .filter(Boolean)
-            .map(p => new THREE.Vector3(p.x, p.y, p.z ?? 0))
-          
-
-
-        if (ruta.length > 1) {
-            carro.ruta = ruta;
-            carro.index = 0;
-            carro.mesh.position.copy(ruta[0]);
-
-            // 👇 Forzar detección del primer punto BLE
-            const puntoInicial = puntos.find(pt => {
-                const punto = new THREE.Vector3(pt.x, pt.y, pt.z ?? 0);
-                const dist = punto.distanceTo(ruta[0]);
-                console.log(`🔍 Distancia de ${pt.nombre} a ruta[0]:`, dist);
-                return dist < 1000;
-            });
-
-            if (puntoInicial && !carro.recorrido.includes(puntoInicial.id)) {
-                carro.recorrido.push(puntoInicial.id);
-                console.log("📍 Primer punto BLE detectado manualmente:", puntoInicial.nombre);
-            }
-
-            console.log(`🚗 Ruta cargada para ${carro.mactag}`, ruta);
-        } else {
-            console.warn("⚠️ No se pudo construir una ruta válida desde el historial filtrado.");
-        }
-    };
-
-
 
     const setCameraView = (view) => {
         const camera = cameraRef.current;
@@ -149,6 +82,8 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
     };
 
     useEffect(() => {
+
+        let isRunning = true;
         const scene = new THREE.Scene();
         sceneRef.current = scene;
         const camera = new THREE.PerspectiveCamera(
@@ -168,11 +103,11 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
         }
 
         // ✅ CREA EL RENDERER AQUÍ
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
         renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
         containerRef.current.appendChild(renderer.domElement);
         rendererRef.current = renderer;
-
+        renderer.setClearColor(0x000000, 0); // fondo transparente (alfa 0)
         containerRef.current?.focus();
 
         // ✅ AHORA renderer sí existe y puedes usarlo
@@ -191,7 +126,7 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
             const material = new THREE.LineBasicMaterial({ color });
             const points = [];
             points.push(new THREE.Vector3(0, 0, 0));
-            points.push(dir.clone().multiplyScalar(15000));
+            points.push(dir.clone().multiplyScalar(1000));
             const geometry = new THREE.BufferGeometry().setFromPoints(points);
             const line = new THREE.Line(geometry, material);
             scene.add(line);
@@ -219,7 +154,7 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
             new THREE.BoxGeometry(112000, 38000, 68000),
             new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true, transparent: true, opacity: 0.3 })
         );
-        scene.add(cubo);
+        // scene.add(cubo);
         const mostrarTexto = (texto, posicion) => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -266,21 +201,6 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
                 if (isWifi) {
                     wifiPointsRef.current.push({ nombre: p.nombre, x: p.x, y: p.y, z: p.z, mesh: sphere });
                 }
-                const canvas = document.createElement('canvas');
-                canvas.width = 1024;
-                canvas.height = 256;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.font = '48px Arial';
-                ctx.fillStyle = 'white';
-                ctx.fillText(`${p.nombre}`, 20, 60);
-                ctx.fillText(`(${p.x}, ${p.y}, ${p.z ?? 0})`, 20, 120);
-                const texture = new THREE.CanvasTexture(canvas);
-                const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
-                label.scale.set(1500, 400, 1);
-                label.position.set(p.x, p.y + 500, p.z ?? 0);
-                scene.add(label);
             });
         };
         const fetchCarros = async () => {
@@ -335,9 +255,47 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
             });
         };
         const fetchRutasPersonalizadas = async () => {
+            const colorMap = {
+                "Ruta animada": 0x87CEFA,
+                "Celeste": 0xff00ff,
+                "Rosado": 0xFFC0CB,
+                "Violeta":0x8A2BE2,
+                "Azul": 0x0000ff,
+                "Naranja": 0xFFA500,
+                "Azul_Marino":0xFFFF00, //amarillo,
+                "Rosa_Marino":0xC080A0 ,
+                "Morado": 0x800080,     // Purple
+                "Rojo": 0xFF0000,       // Red
+                "Verde": 0x00FF00,      // Green
+                "Blanco": 0xFFFFFF,    // White
+                "Dorado": 0xFFD700
+            };
+
             const data = await getRutasPersonalizadas();
             data.forEach(ruta => {
-                const puntosRuta = ruta.puntos.map(p => new THREE.Vector3(p.x, p.y, p.z));
+                if (!ruta.puntos || ruta.puntos.length < 2) {
+                    console.warn(`⚠️ Ruta ignorada: ${ruta.nombre}, tiene ${ruta.puntos?.length || 0} puntos`);
+                    return;
+                }
+
+                const puntosRuta = ruta.puntos
+                .filter(p => p && typeof p.x === 'number' && typeof p.y === 'number')
+                .map(p => new THREE.Vector3(p.x, p.y, p.z ?? 0));
+
+                // Validación para evitar rutas con puntos fuera de rango
+                if (puntosRuta.some(p => 
+                    Math.abs(p.x) > 100000 || 
+                    Math.abs(p.y) > 100000 || 
+                    Math.abs(p.z) > 100000
+                )) {
+                    console.warn(`❌ Ruta descartada por valores fuera de rango: ${ruta.nombre}`);
+                    return;
+                }
+
+                if (puntosRuta.length < 2) {
+                    console.warn(`❌ Ruta ${ruta.nombre} tiene puntos inválidos y fue omitida`);
+                    return;
+                }
                 if (ruta.nombre === 'Ruta animada' && puntosRuta.length > 1) {
                     rutaAnimada.current = puntosRuta;
                     animIndex.current = 0;
@@ -352,39 +310,25 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
                 const curve = new THREE.CatmullRomCurve3(puntosRuta);
                 const tubeGeometry = new THREE.TubeGeometry(curve, 100, 150, 16, false);
 
+
+                
+
+
                 const material = new THREE.MeshPhysicalMaterial({
-                color: 0xffffff,
+                color: colorMap[ruta.nombre] || 0xffffff, // usa color personalizado o blanco por defecto
                 transparent: true,
-                opacity: 0.3,
+                opacity: 0.4,
                 roughness: 0.2,
                 metalness: 0.5,
                 clearcoat: 1,
                 clearcoatRoughness: 0.1
                 });
 
-                const tube = new THREE.Mesh(tubeGeometry, material);
-                scene.add(tube);
-                puntosRuta.forEach((p, index) => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 1024;
-                    canvas.height = 256;
-                    const ctx = canvas.getContext('2d');
-                    ctx.font = '48px Arial';
-                    ctx.fillStyle = 'white';
-                    ctx.fillText(`(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`, 20, 40);
 
-                    const texture = new THREE.CanvasTexture(canvas);
-                    texture.needsUpdate = true;
+                const tubo = new THREE.Mesh(tubeGeometry, material);
+                tubo.userData.tipo = 'rutaPersonalizada'; // ✅ para limpiar después
+                scene.add(tubo);
 
-                    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
-                        map: texture,
-                        transparent: true // 🔑 Esto permite mostrar solo el texto
-                    }));
-
-                    sprite.scale.set(2500, 600, 1);
-                    sprite.position.copy(p.clone().add(new THREE.Vector3(0, 600, 0)));
-                    scene.add(sprite);
-                });
             }); 
         };
         const init = async () => {
@@ -434,10 +378,10 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
                 .then(async data => {
                     console.log(`✅ Historial guardado para ${carroControlado.current.mactag}:`, data);
                     carroControlado.current.recorrido = [];
-                    const historial = await getHistorial();
-                    setHistorial(historial);
+                    const historialVehiculos = await getHistorialVehiculos();
+                    setHistorial(historialVehiculos);
                     setShowHistorial(true);
-                })
+                    })
                 .catch(err => {
                     console.error("❌ Error al guardar historial:", err);
                 });
@@ -470,7 +414,7 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
             );
             if (intersects.length > 0) {
                 try {
-                    const data = await getHistorial();
+                    const data = await getHistorialVehiculos();
                     console.log("📄 Historial recibido:", data);
                     setHistorial(data);
                     setShowHistorial(true);
@@ -483,6 +427,8 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
         window.addEventListener('click', onMouseClick);
         const animate = () => {
             requestAnimationFrame(animate);
+
+           
             carrosRef.current.forEach(carro => {
            if (isPausedRef.current) return;
             if (!carro.ruta || carro.ruta.length < 2) return;
@@ -540,7 +486,10 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
 
         });
             controls.update();
-            rendererRef.current.render(scene, camera);
+            if (rendererRef.current && sceneRef.current && cameraRef.current) {
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+            }
+
         };
         animate();
         return () => {
@@ -575,73 +524,43 @@ console.log("🔎 Historial filtrado por fecha:", historialCarro.map(h => h.punt
 
     return (
         <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, width: 300, height: 300 }}>
-                <CameraCube onFaceClick={setCameraView} />
-            </div>
+            <div style={{
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10,
+    width: 300,
+    height: 300,
+    background: 'transparent',
+    border: 'none',
+    boxShadow: 'none',
+    outline: 'none',
+    padding: 0,
+    margin: 0
+}}>
+    <CameraCube onFaceClick={setCameraView} />
+</div>
+
+
             <div
             ref={containerRef}
             tabIndex={0}
-            style={{ width: '100%', height: '100vh', backgroundColor: '#000' }}
+            style={{ width: '100%', height: '100vh' }}
             />
             <TrackingForms puntos={puntos} sceneRef={sceneRef} />
             <WifiForm onAddWifi={handleAddWifi} />
            {showHistorial && (
-               <HistorialModal historial={historial} onClose={() => setShowHistorial(false)} />
-            )}
-            {showControlModal && (
-            <ControlModal
-                onClose={() => setShowControlModal(false)}
-                onPlay={async () => {
-                    isPausedRef.current = false;
-                    const data = await getHistorial();
-                    setHistorial(data);
-                    reproducirHistorial(data); // 👈 pásalo como parámetro
+               <HistorialModal
+                modalOpen={showHistorial}
+                setModalOpen={setShowHistorial}
+                modalData={{
+                    title: 'Historial de unidad',
+                    descripcion: 'Resumen de recorridos registrados',
+                    video: '/car.mp4',
+                    historial: historial
                 }}
+                />
 
-                onPause={() => {
-                    isPausedRef.current = true;
-                }}
-                velocidad={velocidad}
-                carroSeleccionado={carroSeleccionado}
-                setCarroSeleccionado={setCarroSeleccionado}
-                carros={carrosRef.current}
-                setVelocidad={setVelocidad}
-                fechaInicio={fechaInicio}
-                setFechaInicio={setFechaInicio}
-                fechaFin={fechaFin}
-                setFechaFin={setFechaFin}
-                direccion={"/public/img/persona.jpg"} // imagen o reemplázalo si aún no usas esto
-                setHistorial={setHistorial} // 👈 necesario
-            />
-            )}
-
-           <button
-            onClick={() => setShowControlModal(true)}
-            className="fixed bottom-6 left-6 z-40 bg-gray-800 text-white font-semibold px-4 py-2 rounded-full shadow-lg hover:bg-gray-700 hover:scale-105 transition duration-200"
-            >
-            ⚙️ Control
-            </button>
-            {mostrarModalCarro && carroClickeado && (
-                <div className="fixed z-50 top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center">
-                    <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-                        <h2 className="text-xl font-bold mb-4">Carro: {carroClickeado.mactag}</h2>
-                        <button
-                            className="w-full bg-blue-600 text-white py-2 rounded mb-2 hover:bg-blue-700"
-                            onClick={() => {
-                                setCarroSeleccionado(carroClickeado.mactag);
-                                navigate('/dashboard/historial'); // ✅ redirige a la vista de historial
-                            }}
-                        >
-                            📜 Ver trayectoria histórica
-                        </button>
-                        <button
-                            className="w-full bg-gray-400 text-white py-2 rounded hover:bg-gray-500"
-                            onClick={() => setMostrarModalCarro(false)}
-                        >
-                            ✖️ Cerrar
-                        </button>
-                    </div>
-                </div>
             )}
         </div>
     );

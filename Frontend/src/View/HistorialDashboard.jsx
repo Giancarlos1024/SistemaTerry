@@ -23,7 +23,6 @@ export const HistorialDashboard = () => {
   const [rutasPersonalizadas, setRutasPersonalizadas] = useState([]);
 
 
-  console.log(rutasPersonalizadas)
   useEffect(() => {
     const cargarDatos = async () => {
       const [listaCarros, listaPuntos] = await Promise.all([getCarros(), getPuntos()]);
@@ -46,64 +45,76 @@ export const HistorialDashboard = () => {
     }
 
     const data = await getHistorial();
-    setHistorial(data);
-  };
 
-  const handleInquire = () => {
-    const datos = historial
-      .filter((h) => h.carro_id === carroSeleccionado)
+    // Filtra y ordena el historial antes de enviarlo a Mapa3D
+    const filtrado = data
+      .filter((h) => h.carro_id?.trim().toLowerCase() === carroSeleccionado.trim().toLowerCase())
       .filter((h) => {
         const t = new Date(h.timestamp);
         return t >= new Date(fechaInicio) && t <= new Date(fechaFin);
       })
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-    if (datos.length < 2) {
-      alert("❗ No hay suficientes datos para analizar.");
+    if (filtrado.length < 1) {
+      alert('⚠️ No se encontraron datos para mostrar el recorrido.');
       return;
     }
 
-    const inicio = new Date(datos[0].timestamp);
-    const fin = new Date(datos[datos.length - 1].timestamp);
-    const duracionSeg = (fin - inicio) / 1000;
-
-    // Calcular distancia total
-    const coords = datos.map(h => {
-      const p = puntos.find(p => p.nombre.toLowerCase().trim() === h.punto_nombre.toLowerCase().trim());
-      return p ? { x: p.x, y: p.y, z: p.z ?? 0 } : null;
-    }).filter(Boolean);
-
-    let distanciaTotal = 0;
-    for (let i = 0; i < coords.length - 1; i++) {
-      const dx = coords[i + 1].x - coords[i].x;
-      const dy = coords[i + 1].y - coords[i].y;
-      const dz = coords[i + 1].z - coords[i].z;
-      distanciaTotal += Math.sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-    const velocidadPromedio = distanciaTotal / duracionSeg;
-
-    alert(`📊 Inquire:
-  Carro: ${carroSeleccionado}
-  Puntos registrados: ${datos.length}
-  Inicio: ${inicio.toLocaleString()}
-  Fin: ${fin.toLocaleString()}
-  Duración: ${duracionSeg.toFixed(1)} segundos
-  Distancia total: ${distanciaTotal.toFixed(2)} unidades
-  Velocidad promedio: ${velocidadPromedio.toFixed(2)} u/s`);
+    setHistorial(filtrado); // 👈 SOLO lo necesario para Mapa3D
   };
 
 
+const handleInquire = async () => {
+  if (!carroSeleccionado || !fechaInicio || !fechaFin) {
+    alert("Debe seleccionar carro y fechas válidas");
+    return;
+  }
 
-  // const exportarHistorial = () => {
-  //   const data = historial.filter(h => h.carro_id === carroSeleccionado);
-  //   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  //   const url = URL.createObjectURL(blob);
-  //   const link = document.createElement('a');
-  //   link.href = url;
-  //   link.download = `historial-${carroSeleccionado}.json`;
-  //   link.click();
-  // };
+  const data = await getHistorial(); // 👈 esto carga el historial directamente
+  const datos = data
+    .filter((h) => h.carro_id?.trim().toLowerCase() === carroSeleccionado.trim().toLowerCase())
+    .filter((h) => {
+      const t = new Date(h.timestamp);
+      return t >= new Date(fechaInicio) && t <= new Date(fechaFin);
+    })
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  setHistorial(data); // 👈 actualiza el estado para Mapa3D
+
+  if (datos.length < 2) {
+    alert("❗ No hay suficientes datos para analizar.");
+    return;
+  }
+
+  const inicio = new Date(datos[0].timestamp);
+  const fin = new Date(datos[datos.length - 1].timestamp);
+  const duracionSeg = (fin - inicio) / 1000;
+
+  const coords = datos.map(h => {
+    const p = puntos.find(p => p.id === h.punto_id);
+    return p ? { x: p.x, y: p.y, z: p.z ?? 0 } : null;
+  }).filter(Boolean);
+
+  let distanciaTotal = 0;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const dx = coords[i + 1].x - coords[i].x;
+    const dy = coords[i + 1].y - coords[i].y;
+    const dz = coords[i + 1].z - coords[i].z;
+    distanciaTotal += Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+
+  const velocidadPromedio = distanciaTotal / duracionSeg;
+
+  alert(`📊 Inquire:
+Carro: ${carroSeleccionado}
+Puntos registrados: ${datos.length}
+Inicio: ${inicio.toLocaleString()}
+Fin: ${fin.toLocaleString()}
+Duración: ${duracionSeg.toFixed(1)} segundos
+Distancia total: ${distanciaTotal.toFixed(2)} unidades
+Velocidad promedio: ${velocidadPromedio.toFixed(2)} u/s`);
+};
+
 
 
   const exportarHistorial = () => {
@@ -123,7 +134,7 @@ export const HistorialDashboard = () => {
   const hoja = datosFiltrados.map((h, i) => ({
     '#': i + 1,
     'Carro ID': h.carro_id,
-    'Punto': h.punto_nombre,
+    'Punto': h.punto_id,
     'Timestamp': new Date(h.timestamp).toLocaleString()
   }));
 
@@ -133,9 +144,6 @@ export const HistorialDashboard = () => {
 
   XLSX.writeFile(libro, `Historial_Carro_${carroSeleccionado}.xlsx`);
 };
-
-
-
 
 
   return (
@@ -190,7 +198,7 @@ export const HistorialDashboard = () => {
 
        <div className="flex gap-2 mt-5">
         <button
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded shadow"
+          className="bg-indigo-600 cursor-pointer hover:bg-indigo-700 text-white text-xs font-semibold px-2 py-2 rounded shadow"
           onClick={handleInquire}
         >
           📈 Inquire
@@ -204,7 +212,7 @@ export const HistorialDashboard = () => {
             setPausado(false);
             setCargando(false);
           }}
-          className={`bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded shadow ${
+          className={`bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer text-xs font-semibold px-2 py-2 rounded shadow ${
             cargando ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
@@ -215,7 +223,7 @@ export const HistorialDashboard = () => {
        <button
         className={`${
           pausado ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-600 hover:bg-yellow-700'
-        } text-white font-semibold px-4 py-2 rounded shadow`}
+        } text-white font-semibold px-2 py-2 cursor-pointer rounded shadow text-xs`}
         onClick={() => setPausado(!pausado)}
       >
         {pausado ? '▶️ Continuar' : '⏸️ Pausar'}
@@ -223,7 +231,7 @@ export const HistorialDashboard = () => {
 
 
       <button
-      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow"
+      className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer text-xs font-semibold px-2 py-2 rounded shadow"
       onClick={exportarHistorial}
       >
         📤 Exportar

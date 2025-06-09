@@ -92,6 +92,15 @@ export const ApiProvider = ({ children }) => {
         return await res.json();
     };
 
+    // En ApiProvider dentro de context/ApiContext.jsx
+    const getHistorialVehiculos = async () => {
+        const res = await fetch(`${API_BASE}/api/historial-vehiculos`);
+        if (!res.ok) throw new Error("Error al obtener historial");
+        return await res.json();
+    };
+
+
+
     return (
         <ApiContext.Provider value={{
             getPuntos,
@@ -102,7 +111,8 @@ export const ApiProvider = ({ children }) => {
             postRutaPersonalizada,
             updateRutaPersonalizada,
             getHistorial,
-            getCarros, 
+            getCarros,
+            getHistorialVehiculos,
            
         }}>
             {children}
