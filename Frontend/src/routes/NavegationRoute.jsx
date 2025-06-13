@@ -7,6 +7,7 @@ import { HomeDashboard } from "../View/HomeDashboard"
 import { ThemeProvider } from "../context/ThemeProvider"
 import Login from "../View/Login"
 import Recuperar from "../View/Recuperar"
+import TrackingBuilder from "../View/TrackingBuilder"
 
 
 
@@ -21,7 +22,9 @@ export const NavegationRoute = () =>{
                 <Route path="/recuperar" element={<Recuperar />} />
                 <Route path="/dashboard" element={<Dashboard />}>
                     <Route index element={<HomeDashboard />} />
+                    <Route path="tracking" element={<TrackingBuilder />} />
                     <Route path="historial" element={<HistorialDashboard/>} />
+                    
                 </Route>
                 <Route path="*" element={<NotFound />} />
             </Routes> 

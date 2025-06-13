@@ -64,6 +64,17 @@ export const Slader = ({ isCollapsed, setIsCollapsed }) => {
                             {!isCollapsed && "Dashboard"}
                         </NavLink>
                     </li>
+                    <li>
+                        <NavLink
+                            to="/dashboard/tracking"
+                            className={({ isActive }) =>
+                                `flex items-center p-3 mx-3 text-xs rounded-lg font-medium ${isActive ? activeClass : inactiveClass}`
+                            }
+                        >
+                            <FileClock  className="mr-2 ml-2"/>
+                            {!isCollapsed && "Tracking Builder"}
+                        </NavLink>
+                    </li>
 
                     <li>
                         <NavLink

@@ -22,6 +22,8 @@ export const HistorialDashboard = () => {
   const { getRutasPersonalizadas } = useApi();
   const [rutasPersonalizadas, setRutasPersonalizadas] = useState([]);
 
+  const [indiceHistorial, setIndiceHistorial] = useState(0);
+
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -61,6 +63,8 @@ export const HistorialDashboard = () => {
     }
 
     setHistorial(filtrado); // 👈 SOLO lo necesario para Mapa3D
+    setIndiceHistorial(0); // Reinicia al inicio del recorrido
+
   };
 
 
@@ -250,10 +254,29 @@ Velocidad promedio: ${velocidadPromedio.toFixed(2)} u/s`);
           fechaFin={fechaFin}
           pausado={pausado}
           rutasPersonalizadas={rutasPersonalizadas}
+          indiceHistorial={indiceHistorial}
         />
-
-
       </div>
+     {historial.length > 1 && (
+        <div className="mt-6 px-4 py-3 bg-yellow-100 rounded-lg shadow-inner overflow-x-auto">
+          <div className="flex gap-3 justify-center items-center min-w-max">
+            {historial.map((_, index) => (
+                <button
+                  key={index}
+                  aria-label={`Ir al paso ${index + 1}`}
+                  title={`Paso ${index + 1}`}
+                  onClick={() => setIndiceHistorial(index)}
+                  className={`w-5 h-5 rounded-full border-2 transition-all duration-300 cursor-pointer
+                    ${index === indiceHistorial
+                      ? 'bg-blue-600 border-blue-800 shadow-lg scale-125'
+                      : 'bg-blue-300 border-blue-400 hover:bg-blue-400 hover:scale-110'}
+                  `}
+                />
+              ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

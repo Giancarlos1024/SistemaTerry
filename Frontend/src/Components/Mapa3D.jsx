@@ -12,7 +12,8 @@ const Mapa3D = ({
   fechaInicio = '',
   fechaFin = '',
   pausado = false,
-  rutasPersonalizadas
+  rutasPersonalizadas,
+  indiceHistorial = null   
 }) => {
   const containerRef = useRef();
   const sceneRef = useRef();
@@ -114,11 +115,13 @@ const Mapa3D = ({
         const i = indexRef.current;
         const p1 = ruta[i];
         const p2 = ruta[i + 1];
+
         if (p2) {
           const dir = new THREE.Vector3().subVectors(p2, p1);
           const distancia = dir.length();
           dir.normalize();
           stepProgressRef.current += velocidadRef.current;
+
           if (stepProgressRef.current >= 1) {
             indexRef.current++;
             stepProgressRef.current = 0;
@@ -127,12 +130,19 @@ const Mapa3D = ({
             mesh.position.copy(newPos);
             mesh.lookAt(newPos.clone().add(dir));
           }
+
           if (indexRef.current >= ruta.length - 1) {
             indexRef.current = ruta.length - 1;
             stepProgressRef.current = 0;
           }
+        } else {
+          // ✅ Si no hay p2, estamos en el último punto. Colócalo directamente
+          if (p1) {
+            mesh.position.copy(p1);
+          }
         }
       }
+
 
       luces?.forEach(light => light.visible = !pauseStateRef.current);
       if (halo) halo.rotation.z += 0.1;
@@ -221,13 +231,13 @@ const Mapa3D = ({
     }
     if (puntosRuta.length > 1) {
       const curve = new THREE.CatmullRomCurve3(puntosRuta);
-      const tubeGeometry = new THREE.TubeGeometry(curve, 100, 150, 16, false);
+      const tubeGeometry = new THREE.TubeGeometry(curve, 100, 40, 16, false);
       const colorRuta = colorMap[rutaPersonal.nombre] || 0x00ffff;
       const esRutaAnimada = rutaPersonal.nombre === "Ruta animada";
       const material = new THREE.MeshPhysicalMaterial({
         color: colorRuta,
         transparent: true,
-        opacity: 0.5,
+        opacity: 1,
         roughness: 0.3,
         metalness: 0.5,
         reflectivity: 0.6,
@@ -429,6 +439,24 @@ const Mapa3D = ({
 
     }
   }, [historial, carroSeleccionado, fechaInicio, fechaFin, puntos]);
+ useEffect(() => {
+  if (!carroRef.current || !carroRef.current.ruta || !carroRef.current.ruta.length) return;
+  const ruta = carroRef.current.ruta;
+  const i = indiceHistorial;
+
+  // Asegúrate de que el índice no se pase del último
+  if (i >= 0 && i < ruta.length) {
+    const pos = ruta[i];
+    carroRef.current.mesh.position.copy(pos);
+    if (i < ruta.length - 1) {
+      const dir = new THREE.Vector3().subVectors(ruta[i + 1], pos).normalize();
+      carroRef.current.mesh.lookAt(pos.clone().add(dir));
+    }
+  }
+  indexRef.current = i;
+  stepProgressRef.current = 0;
+}, [indiceHistorial]);
+
   const setCameraView = (view) => {
     const camera = cameraRef.current;
     const controls = controlsRef.current;

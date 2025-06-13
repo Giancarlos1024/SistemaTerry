@@ -6,12 +6,9 @@ import TrackingForms from '../Components/TrackingForms';
 import CameraCube from '../Components/CameraCube';
 import HistorialModal from '../Components/HistorialModal';
 import WifiForm from '../Components/WifiForm';
-import ControlModal from '../Components/ControlModal';
-import { useNavigate } from 'react-router-dom';
+
 
 const TrackingThree = () => {
-
-    const navigate = useNavigate();
 
     const containerRef = useRef();
     const [puntos, setPuntos] = useState([]);
@@ -21,24 +18,15 @@ const TrackingThree = () => {
     const carrosRef = useRef([]);
     const rutaAnimada = useRef([]);
     const animIndex = useRef(0);
-    const wifiRef = useRef();
     const wifiPointsRef = useRef([]);
     const [showHistorial, setShowHistorial] = useState(false);
-    const [showControlModal, setShowControlModal] = useState(false);
     const [historial, setHistorial] = useState([]);
     const [velocidad, setVelocidad] = useState(0.01);
-    const recorridoActual = useRef([]);
     const isPausedRef = useRef(true);
     const rendererRef = useRef(null);
     const carroControlado = useRef(null);
     const { getPuntos, getRutas, getRutasPersonalizadas, getHistorial, getCarros,getHistorialVehiculos} = useApi();
-    const [carroSeleccionado, setCarroSeleccionado] = useState("");
-
-    const [fechaInicio, setFechaInicio] = useState("");
-    const [fechaFin, setFechaFin] = useState("");
-
-    const [carroClickeado, setCarroClickeado] = useState(null);
-    const [mostrarModalCarro, setMostrarModalCarro] = useState(false);
+  
 
     const setCameraView = (view) => {
         const camera = cameraRef.current;
@@ -106,8 +94,22 @@ const TrackingThree = () => {
         const renderer = new THREE.WebGLRenderer({ alpha: false, antialias: true });
         renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
         containerRef.current.appendChild(renderer.domElement);
+
+        const handleResize = () => {
+        if (!containerRef.current || !cameraRef.current || !rendererRef.current) return;
+
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
+
+        cameraRef.current.aspect = width / height;
+        cameraRef.current.updateProjectionMatrix();
+        rendererRef.current.setSize(width, height);
+        };
+
+        window.addEventListener('resize', handleResize);
+
         rendererRef.current = renderer;
-        renderer.setClearColor(0x000000, 0); // fondo transparente (alfa 0)
+        renderer.setClearColor(0x000000, 1); // fondo transparente (alfa 0)
         containerRef.current?.focus();
 
         // ✅ AHORA renderer sí existe y puedes usarlo
@@ -521,31 +523,37 @@ const TrackingThree = () => {
         };
 
     }, []);
-
     return (
         <div style={{ position: 'relative' }}>
             <div style={{
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    zIndex: 10,
-    width: 300,
-    height: 300,
-    background: 'transparent',
-    border: 'none',
-    boxShadow: 'none',
-    outline: 'none',
-    padding: 0,
-    margin: 0
-}}>
-    <CameraCube onFaceClick={setCameraView} />
-</div>
-
-
+                position: 'absolute',
+                top: 20,
+                right: 20,
+                zIndex: 10,
+                width: 300,
+                height: 300,
+                background: 'transparent',
+                border: 'none',
+                boxShadow: 'none',
+                outline: 'none',
+                padding: 0,
+                margin: 0
+            }}>
+                <CameraCube onFaceClick={setCameraView} />
+            </div>
             <div
-            ref={containerRef}
-            tabIndex={0}
-            style={{ width: '100%', height: '100vh' }}
+                ref={containerRef}
+                tabIndex={0}
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    right: 0,
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 0,
+                }}
             />
             <TrackingForms puntos={puntos} sceneRef={sceneRef} />
             <WifiForm onAddWifi={handleAddWifi} />
@@ -560,7 +568,6 @@ const TrackingThree = () => {
                     historial: historial
                 }}
                 />
-
             )}
         </div>
     );
